@@ -1,30 +1,44 @@
+import logging
 import httpx
+from fastapi import HTTPException
 from core.config import SERVICE_KEY, KAKAO_URL, WEATHER_URL
 
+logger = logging.getLogger(__name__)
 client = httpx.AsyncClient()
 
 
 async def get_current_location(address: str):
     """입력 주소 기반 좌표 반환"""
-    
-    headers = {"Authorization": f"KakaoAK {SERVICE_KEY}"}
-    response = await client.get(KAKAO_URL + address, headers=headers)
-    response.raise_for_status()
-    return response.json()
+    try:
+        headers = {"Authorization": f"KakaoAK {SERVICE_KEY}"}
+        response = await client.get(KAKAO_URL + address, headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        logger.error(f"카카오 API 오류: {e.response.status_code} {e.response.text}")
+        raise HTTPException(e.response.status_code)
+    except httpx.RequestError as e:
+        logger.error(f"카카오 API 네트워크 오류: {type(e).__name__}: {e}")
+        raise HTTPException(500)
 
 
 async def get_weather(x: str, y: str):
     """위도/경도 기반 현재 날씨 반환"""
-
-    params = {
-        "latitude": y,
-        "longitude": x,
-        "current": "temperature_2m,weather_code,relative_humidity_2m"
-    }
-    response = await client.get(WEATHER_URL, params=params)
-    response.raise_for_status()
-
-    return format_weather_data(response.json())
+    try:
+        params = {
+            "latitude": y,
+            "longitude": x,
+            "current": "temperature_2m,weather_code,relative_humidity_2m"
+        }
+        response = await client.get(WEATHER_URL, params=params)
+        response.raise_for_status()
+        return format_weather_data(response.json())
+    except httpx.HTTPStatusError as e:
+        logger.error(f"날씨 API 오류: {e.response.status_code} {e.response.text}")
+        raise HTTPException(e.response.status_code)
+    except httpx.RequestError as e:
+        logger.error(f"날씨 API 네트워크 오류: {type(e).__name__}: {e}")
+        raise
 
 
 def format_weather_data(weather_data):
