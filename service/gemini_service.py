@@ -1,5 +1,7 @@
 import logging
+import re
 import google.generativeai as genai
+from http import HTTPStatus
 from core.config import GEMINI_API_KEY, GEMINI_API_MODEL
 
 logger = logging.getLogger(__name__)
@@ -25,4 +27,26 @@ async def get_weather_description(weather_data: dict) -> str:
     
     except Exception as e:
         logger.error(f"Gemini API 호출 실패: {type(e).__name__}: {e}")
-        raise
+        
+        if e.code == HTTPStatus.TOO_MANY_REQUESTS:
+
+            retry_seconds = None
+            for detail in e.details:
+                if hasattr(detail, "retry_delay"):
+                    retry_seconds = detail.retry_delay.seconds
+                    break
+            message = quote_exception_message(retry_seconds)
+            return message
+        else:
+            raise
+
+
+def quote_exception_message(retry_delay: int):
+    """API 사용량 초과 시 응답 메세지 규격"""
+    retry_time = "알 수 없음"
+    if retry_delay is not None:
+        minutes = retry_delay // 60
+        seconds = retry_delay % 60
+
+        retry_time = f"{minutes}분 {seconds}초" if minutes > 0 else f"{seconds}초"
+    return f"Gemini API 사용량 초과로 인해<br>{retry_time} 동안 날씨 설명을 제공할 수 없습니다."

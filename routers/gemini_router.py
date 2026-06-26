@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
-from service.weather_service import get_current_location, get_weather
+from service.weather_service import resolve_location, get_weather
 from service.gemini_service import get_weather_description
 import logging
 
@@ -9,19 +9,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/gemini")
 
 
-@router.get("/weather/{address}")
-async def weather_with_description(address: str):
-    """주소로 현재 날씨를 조회하고 Gemini가 자연어로 설명"""
-    data = await get_current_location(address)
-
-    if not data or "documents" not in data or len(data["documents"]) == 0:
-        raise HTTPException(404, detail=f"주소 위도/경도 데이터 없음: {address}")
-
-    x = data["documents"][0].get("x")
-    y = data["documents"][0].get("y")
-
-    if not x or not y:
-        raise HTTPException(404, detail=f"좌표 데이터 없음: x={x}, y={y}")
+@router.post("/weather")
+async def weather_with_description(request: dict):
+    """주소 또는 좌표로 현재 날씨를 조회하고 Gemini가 자연어로 설명"""
+    x, y, address = await resolve_location(
+        address=request.get("address"),
+        longitude=request.get("longitude"),
+        latitude=request.get("latitude"),
+    )
 
     weather_data = await get_weather(x, y)
     if not weather_data:
@@ -32,6 +27,8 @@ async def weather_with_description(address: str):
     return JSONResponse(
         status_code=200,
         content={
-            "description": description
+            "description": description,
+            "weather": weather_data["weather"],
+            "address": address,
         }
     )

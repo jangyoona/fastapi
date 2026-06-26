@@ -1,11 +1,45 @@
 import logging
 import httpx
 from fastapi import HTTPException
-from core.config import SERVICE_KEY, KAKAO_URL, WEATHER_URL
+from core.config import SERVICE_KEY, KAKAO_URL, KAKAO_COORD_URL, WEATHER_URL
 
 logger = logging.getLogger(__name__)
 client = httpx.AsyncClient()
 
+
+async def get_current_coord_location(longitude: float, latitude: float):
+    """입력 좌표 기반 주소 반환"""
+    try:
+        headers = {"Authorization": f"KakaoAK {SERVICE_KEY}"}
+        params = {"x": longitude, "y": latitude}
+        response = await client.get(KAKAO_COORD_URL, params=params, headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        logger.error(f"카카오 API 오류: {e.response.status_code} {e.response.text}")
+        raise HTTPException(e.response.status_code)
+    except httpx.RequestError as e:
+        logger.error(f"카카오 API 네트워크 오류: {type(e).__name__}: {e}")
+        raise HTTPException(500)
+
+
+async def resolve_location(address: str | None, longitude: float | None, latitude: float | None) -> tuple[str, str, str]:
+    """주소 또는 좌표를 받아 (x, y, address_name) 반환"""
+    if latitude and longitude:
+        data = await get_current_coord_location(longitude, latitude)
+        if not data or "documents" not in data or len(data["documents"]) == 0:
+            raise HTTPException(404, detail=f"좌표에 해당하는 주소 없음: x={longitude}, y={latitude}")
+        document = data["documents"][0]
+        return str(longitude), str(latitude), document.get("address_name")
+    else:
+        data = await get_current_location(address)
+        if not data or "documents" not in data or len(data["documents"]) == 0:
+            raise HTTPException(404, detail=f"주소 위도/경도 데이터 없음: {address}")
+        document = data["documents"][0]
+        x, y = document.get("x"), document.get("y")
+        if not x or not y:
+            raise HTTPException(404, detail=f"좌표 데이터 없음: x={x}, y={y}")
+        return x, y, document.get("address_name")
 
 async def get_current_location(address: str):
     """입력 주소 기반 좌표 반환"""
