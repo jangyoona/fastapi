@@ -15,7 +15,8 @@ async def weather_with_description(request: dict, req: Request):
     """주소 또는 좌표로 현재 날씨를 조회하고 Gemini가 자연어로 설명"""
     
     # 요청 host 검증
-    if not is_allowed_host(req.url.hostname):
+    host = (req.headers.get("x-forwarded-host") or req.headers.get("host") or req.url.hostname).split(":")[0]
+    if not is_allowed_host(host):
         raise HTTPException(status_code=403, detail="허용되지 않은 host 입니다.")
 
     x, y, address = await resolve_location(
