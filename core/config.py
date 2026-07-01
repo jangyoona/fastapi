@@ -3,8 +3,8 @@ import os
 
 load_dotenv("env/.env")
 
-SERVICE_KEY = os.getenv("SERVICE_KEY")
-KAKAO_URL = os.getenv("KAKAO_URL")
+KAKAO_API_KEY = os.getenv("KAKAO_API_KEY")
+KAKAO_API_URL = os.getenv("KAKAO_API_URL")
 KAKAO_COORD_URL = os.getenv("KAKAO_COORD_URL")
 WEATHER_URL = os.getenv("WEATHER_URL")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")

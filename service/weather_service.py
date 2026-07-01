@@ -1,7 +1,7 @@
 import logging
 import httpx
 from fastapi import HTTPException
-from core.config import SERVICE_KEY, KAKAO_URL, KAKAO_COORD_URL, WEATHER_URL
+from core.config import KAKAO_API_KEY, KAKAO_API_URL, KAKAO_COORD_URL, WEATHER_URL
 
 logger = logging.getLogger(__name__)
 client = httpx.AsyncClient()
@@ -10,7 +10,7 @@ client = httpx.AsyncClient()
 async def get_current_coord_location(longitude: float, latitude: float):
     """입력 좌표 기반 주소 반환"""
     try:
-        headers = {"Authorization": f"KakaoAK {SERVICE_KEY}"}
+        headers = {"Authorization": f"KakaoAK {KAKAO_API_KEY}"}
         params = {"x": longitude, "y": latitude}
         response = await client.get(KAKAO_COORD_URL, params=params, headers=headers)
         response.raise_for_status()
@@ -44,8 +44,8 @@ async def resolve_location(address: str | None, longitude: float | None, latitud
 async def get_current_location(address: str):
     """입력 주소 기반 좌표 반환"""
     try:
-        headers = {"Authorization": f"KakaoAK {SERVICE_KEY}"}
-        response = await client.get(KAKAO_URL + address, headers=headers)
+        headers = {"Authorization": f"KakaoAK {KAKAO_API_KEY}"}
+        response = await client.get(KAKAO_API_URL + address, headers=headers)
         response.raise_for_status()
         return response.json()
     except httpx.HTTPStatusError as e:
